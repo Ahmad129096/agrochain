@@ -43,8 +43,7 @@ function RootLayoutNav() {
       <Stack.Screen
         name="farmer-dashboard"
         options={{
-          title: "Farmer Dashboard",
-          headerBackTitle: "Back",
+          headerShown: false,
         }}
       />
       <Stack.Screen
