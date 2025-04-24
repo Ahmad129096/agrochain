@@ -2,167 +2,170 @@ import React, { useState } from "react";
 import {
   View,
   Text,
+  StyleSheet,
   TextInput,
   TouchableOpacity,
-  StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
+import { useAuth } from "../contexts/AuthContext";
 import { getValidationMessage } from "../utils/validations";
+import { useRouter } from "expo-router";
 
 export default function RegisterScreen() {
+  const { register } = useAuth();
   const router = useRouter();
-  const { role } = useLocalSearchParams();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [location, setLocation] = useState("");
-  const [errors, setErrors] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
-    location: "",
-  });
+  const [role, setRole] = useState<"farmer" | "buyer">("farmer");
+  const [loading, setLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
-    const newErrors = {
-      name: getValidationMessage("name", name),
-      email: getValidationMessage("email", email),
-      password: getValidationMessage("password", password),
-      confirmPassword:
-        password !== confirmPassword ? "Passwords do not match" : "",
-      location: getValidationMessage("location", location),
-    };
-    setErrors(newErrors);
-    return !Object.values(newErrors).some((error) => error);
-  };
+    const newErrors: Record<string, string> = {};
 
-  const handleRegister = () => {
-    if (!validateForm()) {
-      return;
+    const nameError = getValidationMessage("name", name);
+    if (nameError) newErrors.name = nameError;
+
+    const emailError = getValidationMessage("email", email);
+    if (emailError) newErrors.email = emailError;
+
+    const passwordError = getValidationMessage("password", password);
+    if (passwordError) newErrors.password = passwordError;
+
+    if (password !== confirmPassword) {
+      newErrors.confirmPassword = "Passwords do not match";
     }
 
-    // TODO: Connect to backend for registration
-    // For now, we'll simulate a successful registration
-    if (role === "farmer") {
-      router.push("/farmer-dashboard");
-    } else if (role === "buyer") {
-      router.push("/buyer-dashboard");
+    if (!location) {
+      newErrors.location = "Location is required";
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const handleRegister = async () => {
+    if (!validateForm()) return;
+
+    setLoading(true);
+    try {
+      await register(name, email, password, role, location);
+    } catch (error) {
+      Alert.alert("Error", "Registration failed. Please try again.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        Register as {role === "farmer" ? "Farmer" : "Buyer"}
-      </Text>
+      <Text style={styles.title}>Create Account</Text>
+      <Text style={styles.subtitle}>Join AgroChain as a {role}</Text>
 
-      <View style={styles.formContainer}>
-        <TextInput
-          placeholder="Full Name"
-          value={name}
-          onChangeText={(text) => {
-            setName(text);
-            setErrors({ ...errors, name: getValidationMessage("name", text) });
-          }}
-          style={[styles.input, errors.name ? styles.inputError : null]}
-        />
-        {errors.name ? (
-          <Text style={styles.errorText}>{errors.name}</Text>
-        ) : null}
-
-        <TextInput
-          placeholder="Email"
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text);
-            setErrors({
-              ...errors,
-              email: getValidationMessage("email", text),
-            });
-          }}
-          style={[styles.input, errors.email ? styles.inputError : null]}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        {errors.email ? (
-          <Text style={styles.errorText}>{errors.email}</Text>
-        ) : null}
-
-        <TextInput
-          placeholder="Location"
-          value={location}
-          onChangeText={(text) => {
-            setLocation(text);
-            setErrors({
-              ...errors,
-              location: getValidationMessage("location", text),
-            });
-          }}
-          style={[styles.input, errors.location ? styles.inputError : null]}
-        />
-        {errors.location ? (
-          <Text style={styles.errorText}>{errors.location}</Text>
-        ) : null}
-
-        <TextInput
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={(text) => {
-            setPassword(text);
-            setErrors({
-              ...errors,
-              password: getValidationMessage("password", text),
-              confirmPassword:
-                text !== confirmPassword ? "Passwords do not match" : "",
-            });
-          }}
-          style={[styles.input, errors.password ? styles.inputError : null]}
-        />
-        {errors.password ? (
-          <Text style={styles.errorText}>{errors.password}</Text>
-        ) : null}
-
-        <TextInput
-          placeholder="Confirm Password"
-          secureTextEntry
-          value={confirmPassword}
-          onChangeText={(text) => {
-            setConfirmPassword(text);
-            setErrors({
-              ...errors,
-              confirmPassword:
-                text !== password ? "Passwords do not match" : "",
-            });
-          }}
-          style={[
-            styles.input,
-            errors.confirmPassword ? styles.inputError : null,
-          ]}
-        />
-        {errors.confirmPassword ? (
-          <Text style={styles.errorText}>{errors.confirmPassword}</Text>
-        ) : null}
-
+      <View style={styles.roleSelector}>
         <TouchableOpacity
-          style={styles.registerButton}
-          onPress={handleRegister}
+          style={[styles.roleButton, role === "farmer" && styles.selectedRole]}
+          onPress={() => setRole("farmer")}
         >
-          <Text style={styles.registerButtonText}>Register</Text>
+          <Text
+            style={[
+              styles.roleButtonText,
+              role === "farmer" && styles.selectedRoleText,
+            ]}
+          >
+            Farmer
+          </Text>
         </TouchableOpacity>
-
         <TouchableOpacity
-          style={styles.loginLink}
-          onPress={() => router.push(`/login?role=${role}`)}
+          style={[styles.roleButton, role === "buyer" && styles.selectedRole]}
+          onPress={() => setRole("buyer")}
         >
-          <Text style={styles.loginText}>
-            Already have an account? Login as {role}
+          <Text
+            style={[
+              styles.roleButtonText,
+              role === "buyer" && styles.selectedRoleText,
+            ]}
+          >
+            Buyer
           </Text>
         </TouchableOpacity>
       </View>
+
+      <TextInput
+        style={[styles.input, errors.name && styles.inputError]}
+        placeholder="Full Name"
+        value={name}
+        onChangeText={setName}
+      />
+      {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+
+      <TextInput
+        style={[styles.input, errors.email && styles.inputError]}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
+      {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
+
+      <TextInput
+        style={[styles.input, errors.password && styles.inputError]}
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
+      {errors.password && (
+        <Text style={styles.errorText}>{errors.password}</Text>
+      )}
+
+      <TextInput
+        style={[styles.input, errors.confirmPassword && styles.inputError]}
+        placeholder="Confirm Password"
+        value={confirmPassword}
+        onChangeText={setConfirmPassword}
+        secureTextEntry
+      />
+      {errors.confirmPassword && (
+        <Text style={styles.errorText}>{errors.confirmPassword}</Text>
+      )}
+
+      <TextInput
+        style={[styles.input, errors.location && styles.inputError]}
+        placeholder="Location (e.g., City, Country)"
+        value={location}
+        onChangeText={setLocation}
+      />
+      {errors.location && (
+        <Text style={styles.errorText}>{errors.location}</Text>
+      )}
+
+      <TouchableOpacity
+        style={styles.registerButton}
+        onPress={handleRegister}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.registerButtonText}>Register</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        style={styles.loginLink}
+        onPress={() => router.push("/login")}
+      >
+        <Text style={styles.loginText}>
+          Already have an account?{" "}
+          <Text style={styles.loginLinkText}>Login</Text>
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -170,42 +173,58 @@ export default function RegisterScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
     padding: 20,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#fff",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
+    marginBottom: 5,
     color: "#2E7D32",
   },
-  formContainer: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 20,
+  },
+  roleSelector: {
+    flexDirection: "row",
+    marginBottom: 20,
+    backgroundColor: "#f5f5f5",
+    borderRadius: 5,
+    padding: 5,
+  },
+  roleButton: {
+    flex: 1,
+    padding: 10,
+    borderRadius: 5,
+    alignItems: "center",
+  },
+  selectedRole: {
+    backgroundColor: "#2E7D32",
+  },
+  roleButtonText: {
+    color: "#666",
+    fontWeight: "bold",
+  },
+  selectedRoleText: {
+    color: "#fff",
   },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
-    padding: 15,
-    marginBottom: 5,
     borderRadius: 5,
+    padding: 12,
+    marginBottom: 10,
     fontSize: 16,
   },
   inputError: {
-    borderColor: "#f44336",
+    borderColor: "#dc3545",
   },
   errorText: {
-    color: "#f44336",
-    fontSize: 12,
+    color: "#dc3545",
     marginBottom: 10,
+    fontSize: 12,
   },
   registerButton: {
     backgroundColor: "#2E7D32",
@@ -224,7 +243,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   loginText: {
-    color: "#2E7D32",
+    color: "#666",
     fontSize: 14,
+  },
+  loginLinkText: {
+    color: "#2E7D32",
+    fontWeight: "bold",
   },
 });

@@ -6,98 +6,78 @@ import {
   TouchableOpacity,
   StyleSheet,
   Alert,
+  ActivityIndicator,
 } from "react-native";
-import { useRouter, useLocalSearchParams } from "expo-router";
-import { validateEmail, getValidationMessage } from "../utils/validations";
+import { useAuth } from "../contexts/AuthContext";
+import { useRouter } from "expo-router";
 
 export default function LoginScreen() {
+  const { login } = useAuth();
   const router = useRouter();
-  const { role } = useLocalSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errors, setErrors] = useState({
-    email: "",
-    password: "",
-  });
+  const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
-    const newErrors = {
-      email: getValidationMessage("email", email),
-      password: password ? "" : "Password is required",
-    };
-    setErrors(newErrors);
-    return !newErrors.email && !newErrors.password;
-  };
-
-  const handleLogin = () => {
-    if (!validateForm()) {
+  const handleLogin = async () => {
+    if (!email || !password) {
+      Alert.alert("Error", "Please fill in all fields");
       return;
     }
 
-    // TODO: Connect to backend for authentication
-    // For now, we'll simulate a successful login
-    if (role === "farmer") {
-      router.push("/farmer-dashboard");
-    } else if (role === "buyer") {
-      router.push("/buyer-dashboard");
+    setLoading(true);
+    try {
+      await login(email, password);
+      // Navigation will be handled by the AuthGuard
+    } catch (error) {
+      Alert.alert("Error", "Invalid credentials");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>
-        {role === "farmer" ? "Farmer Login" : "Buyer Login"}
-      </Text>
+      <Text style={styles.title}>Welcome Back</Text>
+      <Text style={styles.subtitle}>Login to your AgroChain account</Text>
 
-      <View style={styles.formContainer}>
-        <TextInput
-          placeholder="Email"
-          value={email}
-          onChangeText={(text) => {
-            setEmail(text);
-            setErrors({
-              ...errors,
-              email: getValidationMessage("email", text),
-            });
-          }}
-          style={[styles.input, errors.email ? styles.inputError : null]}
-          keyboardType="email-address"
-          autoCapitalize="none"
-        />
-        {errors.email ? (
-          <Text style={styles.errorText}>{errors.email}</Text>
-        ) : null}
+      <TextInput
+        style={styles.input}
+        placeholder="Email"
+        value={email}
+        onChangeText={setEmail}
+        keyboardType="email-address"
+        autoCapitalize="none"
+      />
 
-        <TextInput
-          placeholder="Password"
-          secureTextEntry
-          value={password}
-          onChangeText={(text) => {
-            setPassword(text);
-            setErrors({
-              ...errors,
-              password: text ? "" : "Password is required",
-            });
-          }}
-          style={[styles.input, errors.password ? styles.inputError : null]}
-        />
-        {errors.password ? (
-          <Text style={styles.errorText}>{errors.password}</Text>
-        ) : null}
+      <TextInput
+        style={styles.input}
+        placeholder="Password"
+        value={password}
+        onChangeText={setPassword}
+        secureTextEntry
+      />
 
-        <TouchableOpacity style={styles.loginButton} onPress={handleLogin}>
+      <TouchableOpacity
+        style={styles.loginButton}
+        onPress={handleLogin}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
           <Text style={styles.loginButtonText}>Login</Text>
-        </TouchableOpacity>
+        )}
+      </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.registerLink}
-          onPress={() => router.push(`/register?role=${role}`)}
-        >
-          <Text style={styles.registerText}>
-            Don't have an account? Register as {role}
-          </Text>
-        </TouchableOpacity>
-      </View>
+      <TouchableOpacity
+        style={styles.registerLink}
+        onPress={() => router.push("/register")}
+      >
+        <Text style={styles.registerText}>
+          Don't have an account?{" "}
+          <Text style={styles.registerLinkText}>Register</Text>
+        </Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -105,42 +85,27 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: "center",
     padding: 20,
-    backgroundColor: "#f5f5f5",
+    backgroundColor: "#fff",
   },
   title: {
     fontSize: 24,
     fontWeight: "bold",
-    marginBottom: 30,
-    textAlign: "center",
+    marginBottom: 5,
     color: "#2E7D32",
   },
-  formContainer: {
-    backgroundColor: "#fff",
-    padding: 20,
-    borderRadius: 10,
-    elevation: 2,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  subtitle: {
+    fontSize: 16,
+    color: "#666",
+    marginBottom: 20,
   },
   input: {
     borderWidth: 1,
     borderColor: "#ddd",
-    padding: 15,
-    marginBottom: 5,
     borderRadius: 5,
-    fontSize: 16,
-  },
-  inputError: {
-    borderColor: "#f44336",
-  },
-  errorText: {
-    color: "#f44336",
-    fontSize: 12,
+    padding: 12,
     marginBottom: 10,
+    fontSize: 16,
   },
   loginButton: {
     backgroundColor: "#2E7D32",
@@ -159,7 +124,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   registerText: {
-    color: "#2E7D32",
+    color: "#666",
     fontSize: 14,
+  },
+  registerLinkText: {
+    color: "#2E7D32",
+    fontWeight: "bold",
   },
 });

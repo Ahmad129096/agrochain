@@ -1,8 +1,31 @@
 import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 import { useRouter } from "expo-router";
+import { useEffect } from "react";
+import { useAuth } from "../contexts/AuthContext";
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { user, loading } = useAuth();
+
+  useEffect(() => {
+    if (!loading) {
+      if (user) {
+        router.replace(
+          user.role === "farmer" ? "/farmer-dashboard" : "/buyer-dashboard"
+        );
+      } else {
+        router.replace("/register");
+      }
+    }
+  }, [user, loading]);
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading...</Text>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
@@ -26,7 +49,7 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.roleButton}
-          onPress={() => router.push("/buyer-dashboard")}
+          onPress={() => router.push("/login?role=buyer")}
         >
           <Text style={styles.roleButtonText}>I'm a Buyer</Text>
           <Text style={styles.roleDescription}>
@@ -63,6 +86,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 20,
     backgroundColor: "#f5f5f5",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#f5f5f5",
+  },
+  loadingText: {
+    fontSize: 18,
+    color: "#666",
   },
   title: {
     fontSize: 28,
